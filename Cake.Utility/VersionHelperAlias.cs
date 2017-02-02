@@ -8,12 +8,12 @@ namespace Cake.Utility
     public static class VersionHelperAlias
     {
         [CakeMethodAlias]
-        public static VersionHelper GetVersionHelper(this ICakeContext context, string branch)
+        public static VersionHelper GetVersionHelper(this ICakeContext context)
         {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
 
-            return new VersionHelper(context.Environment, context.Log, context.Arguments, context.TeamCity(), context.AppVeyor(), context.Globber, context.FileSystem, branch);
+            return new VersionHelper(context.Environment, context.Log, context.Arguments, context.TeamCity(), context.AppVeyor(), context.Globber, context.FileSystem);
         }
 
         [CakeMethodAlias]
@@ -21,7 +21,11 @@ namespace Cake.Utility
         {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
-            var versionInfo =new VersionHelper(context.Environment, context.Log, context.Arguments, context.TeamCity(), context.AppVeyor(), context.Globber, context.FileSystem, branch);
+            var versionInfo = new VersionHelper(context.Environment, context.Log, context.Arguments, context.TeamCity(),
+                                                context.AppVeyor(), context.Globber, context.FileSystem)
+            {
+                Branch = branch
+            };
             return versionInfo.GetNextVersion(defaultVersion);
         }
     }

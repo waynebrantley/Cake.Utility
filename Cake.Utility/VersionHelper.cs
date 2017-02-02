@@ -34,13 +34,12 @@ namespace Cake.Utility
         private readonly IAppVeyorProvider _appVeyorProvider;
         private readonly IGlobber _globber;
         private readonly IFileSystem _fileSystem;
-        private readonly string _branch;
         public const string DefaultBuildVersionArgumentName = "buildVersion";
         public const string DefaultMasterBaseVersionEnvironmentVariable = "RootVersion.Master";
         public const string DefaultPreReleaseBaseVersionEnvironmentVariable = "RootVersion.Feature";
         public const string DefaultDefaultBranchName = "master";
         public VersionHelper(ICakeEnvironment environment, ICakeLog log, ICakeArguments arguments, ITeamCityProvider teamCityProvider,
-                             IAppVeyorProvider appVeyorProvider, IGlobber globber, IFileSystem fileSystem, string branch)
+                             IAppVeyorProvider appVeyorProvider, IGlobber globber, IFileSystem fileSystem)
         {
             _environment = environment;
             _log = log;
@@ -49,11 +48,15 @@ namespace Cake.Utility
             _appVeyorProvider = appVeyorProvider;
             _globber = globber;
             _fileSystem = fileSystem;
-            _branch = branch;
             if (environment == null)
                 throw new ArgumentNullException(nameof(environment));
             if (log == null)
                 throw new ArgumentNullException(nameof(log));
+            if (IsAppVeyor)
+            {
+                Branch = _appVeyorProvider.Environment.Repository.Branch;
+                CommitMessageShort = _appVeyorProvider.Environment.Repository.Commit.Message;
+            }
         }
 
         public string BuildVersionArgumentName { get; set; } = DefaultBuildVersionArgumentName;
@@ -61,12 +64,14 @@ namespace Cake.Utility
         public string PreReleaseBaseVersionEnvironmentVariable { get; set; } = DefaultPreReleaseBaseVersionEnvironmentVariable;
         public string DefaultBranchName { get; set; } = DefaultDefaultBranchName;
 
+        public string Branch { get; set; }
+        public string CommitMessageShort { get; set; }
         public bool IsMyGet => string.Compare(_environment.GetEnvironmentVariable("BuildRunner"), "MyGet", StringComparison.OrdinalIgnoreCase) == 0;
         public bool IsTeamCity => _teamCityProvider.IsRunningOnTeamCity;
         public bool IsAppVeyor => _appVeyorProvider.IsRunningOnAppVeyor;
         public bool IsInteractiveBuild => !IsAppVeyor && !IsTeamCity && !IsMyGet;
         public bool IsCiBuildEnvironment => IsAppVeyor || IsTeamCity || IsMyGet;
-        public bool IsPreRelease => string.Compare(_branch, DefaultBranchName, StringComparison.OrdinalIgnoreCase) != 0;
+        public bool IsPreRelease => string.Compare(Branch, DefaultBranchName, StringComparison.OrdinalIgnoreCase) != 0;
         public string BuildEnvironmentName => IsAppVeyor ? "AppVeyor" : IsTeamCity ? "TeamCity" : IsMyGet ? "MyGet" : "Interactive";
 
         public string GetBaseVersionString(string defaultVersion)
@@ -124,7 +129,7 @@ namespace Cake.Utility
             };
             if (IsPreRelease)
             {
-                string extraLabel = "-" + _branch.Replace("_", "");
+                string extraLabel = "-" + Branch.Replace("_", "");
                 if (extraLabel.Length > 20)
                     extraLabel = extraLabel.Substring(0, 20);
                 result.FullVersion = result.RootVersion + extraLabel;
@@ -155,6 +160,7 @@ namespace Cake.Utility
                 });
             }
         }
+
         public SolutionInfoResult GetSolutionToBuild()
         {
             var files = _globber.GetFiles("./**/*.sln").ToList();

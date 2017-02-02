@@ -174,7 +174,7 @@ namespace Cake.Utility.Tests
 
         private VersionHelper GetVersionHelper(string branch)
         {
-            return new VersionHelper(_environment, _log, _arguments, _teamCity, _appVeyor, _globber, _fileSystem, branch);
+            return new VersionHelper(_environment, _log, _arguments, _teamCity, _appVeyor, _globber, _fileSystem) { Branch = branch };
         }
     }
 }
