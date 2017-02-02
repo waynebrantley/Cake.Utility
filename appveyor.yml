@@ -3,6 +3,7 @@ configuration: Release
 init:
 - cmd: >-
     tzutil /s "Eastern Standard Time"
+
     choco install cake.portable -r -y
 before_build:
 - cmd: cake
