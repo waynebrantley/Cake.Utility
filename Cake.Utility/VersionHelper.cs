@@ -64,7 +64,7 @@ namespace Cake.Utility
         public string PreReleaseBaseVersionEnvironmentVariable { get; set; } = DefaultPreReleaseBaseVersionEnvironmentVariable;
         public string DefaultBranchName { get; set; } = DefaultDefaultBranchName;
 
-        public string Branch { get; set; }
+        public string Branch { get; set; } = string.Empty;
         public string CommitMessageShort { get; set; }
         public bool IsMyGet => string.Compare(_environment.GetEnvironmentVariable("BuildRunner"), "MyGet", StringComparison.OrdinalIgnoreCase) == 0;
         public bool IsTeamCity => _teamCityProvider.IsRunningOnTeamCity;
