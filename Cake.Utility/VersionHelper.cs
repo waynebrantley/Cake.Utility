@@ -66,13 +66,14 @@ namespace Cake.Utility
 
         public string Branch { get; set; } = string.Empty;
         public string CommitMessageShort { get; set; }
-        public bool IsMyGet => string.Compare(_environment.GetEnvironmentVariable("BuildRunner"), "MyGet", StringComparison.OrdinalIgnoreCase) == 0;
         public bool IsTeamCity => _teamCityProvider.IsRunningOnTeamCity;
         public bool IsAppVeyor => _appVeyorProvider.IsRunningOnAppVeyor;
-        public bool IsInteractiveBuild => !IsAppVeyor && !IsTeamCity && !IsMyGet;
-        public bool IsCiBuildEnvironment => IsAppVeyor || IsTeamCity || IsMyGet;
+        public bool IsInteractiveBuild => !IsAppVeyor && !IsTeamCity;
+        public bool IsCiBuildEnvironment => IsAppVeyor || IsTeamCity;
         public bool IsPreRelease => string.Compare(Branch, DefaultBranchName, StringComparison.OrdinalIgnoreCase) != 0;
-        public string BuildEnvironmentName => IsAppVeyor ? "AppVeyor" : IsTeamCity ? "TeamCity" : IsMyGet ? "MyGet" : "Interactive";
+        public bool ShouldDeploy => IsCiBuildEnvironment && !IsPreRelease && !IsPullRequest;
+        public bool IsPullRequest => IsAppVeyor && _appVeyorProvider.Environment.PullRequest.IsPullRequest;
+        public string BuildEnvironmentName => IsAppVeyor ? "AppVeyor" : IsTeamCity ? "TeamCity" : "Interactive";
 
         public string GetBaseVersionString(string defaultVersion)
         {
@@ -81,11 +82,6 @@ namespace Cake.Utility
             if (IsAppVeyor)
             {
                 string version = _appVeyorProvider.Environment.Build.Version;
-                return string.IsNullOrWhiteSpace(version) ? defaultVersion : version;
-            }
-            if (IsMyGet)
-            {
-                string version = _environment.GetEnvironmentVariable("PackageVersion");
                 return string.IsNullOrWhiteSpace(version) ? defaultVersion : version;
             }
             if (IsTeamCity)
@@ -116,8 +112,6 @@ namespace Cake.Utility
                 _appVeyorProvider.UpdateBuildVersion(version.FullVersion);
             else if (IsTeamCity)
                 _teamCityProvider.SetBuildNumber(version.FullVersion);
-            else //IsMyGet
-                _log.Information($"MyGet Version Set Not Implemented");
         }
 
         public VersionResult GetNextVersion(string defaultVersion)

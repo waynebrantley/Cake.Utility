@@ -42,7 +42,6 @@ namespace Cake.Utility.Tests
             _arguments.GetArgument(VersionHelper.DefaultBuildVersionArgumentName).Returns("2.3.4");
             var versionHelper = GetVersionHelper(VersionHelper.DefaultDefaultBranchName);
             Assert.That(versionHelper.GetBaseVersionString(FallBackVersion), Is.EqualTo("2.3.4"));
-            Assert.That(versionHelper.IsMyGet, Is.EqualTo(false));
             Assert.That(versionHelper.IsTeamCity, Is.EqualTo(false));
             Assert.That(versionHelper.IsAppVeyor, Is.EqualTo(false));
         }
@@ -54,7 +53,6 @@ namespace Cake.Utility.Tests
             var versionHelper = GetVersionHelper(VersionHelper.DefaultDefaultBranchName);
             var info = versionHelper.GetNextVersion(FallBackVersion);
             Assert.That(versionHelper.GetBaseVersionString(FallBackVersion), Is.EqualTo(FallBackVersion));
-            Assert.That(versionHelper.IsMyGet, Is.EqualTo(false));
             Assert.That(versionHelper.IsTeamCity, Is.EqualTo(false));
             Assert.That(versionHelper.IsAppVeyor, Is.EqualTo(false));
 
@@ -69,7 +67,6 @@ namespace Cake.Utility.Tests
             _environment.SetEnvironmentVariable("APPVEYOR_BUILD_VERSION", "2.3.4");
             var versionHelper = GetVersionHelper(isMaster ? VersionHelper.DefaultDefaultBranchName : "someFeature");
 
-            Assert.That(versionHelper.IsMyGet, Is.EqualTo(false));
             Assert.That(versionHelper.IsTeamCity, Is.EqualTo(false));
             Assert.That(versionHelper.IsAppVeyor, Is.EqualTo(true));
             Assert.That(versionHelper.GetBaseVersionString(FallBackVersion), Is.EqualTo("2.3.4"));
@@ -85,7 +82,6 @@ namespace Cake.Utility.Tests
             _environment.SetEnvironmentVariable(VersionHelper.DefaultMasterBaseVersionEnvironmentVariable, "2.3");
             _environment.SetEnvironmentVariable(VersionHelper.DefaultPreReleaseBaseVersionEnvironmentVariable, "1.2");
             var versionHelper = GetVersionHelper(isMaster ? VersionHelper.DefaultDefaultBranchName : "someFeature");
-            Assert.That(versionHelper.IsMyGet, Is.EqualTo(false));
             Assert.That(versionHelper.IsTeamCity, Is.EqualTo(true));
             Assert.That(versionHelper.IsAppVeyor, Is.EqualTo(false));
             if (isMaster)
@@ -108,37 +104,11 @@ namespace Cake.Utility.Tests
             if (providePrerelease)
                 _environment.SetEnvironmentVariable(VersionHelper.DefaultPreReleaseBaseVersionEnvironmentVariable, "1.2");
             var versionHelper = GetVersionHelper(VersionHelper.DefaultDefaultBranchName);
-            Assert.That(versionHelper.IsMyGet, Is.EqualTo(false));
             Assert.That(versionHelper.IsTeamCity, Is.EqualTo(true));
             if (!provideMaster || !providePrerelease)
                 Assert.That(versionHelper.GetBaseVersionString(FallBackVersion), Is.EqualTo(FallBackVersion));
             Assert.That(_log.Entries.Count, Is.EqualTo(provideMaster && providePrerelease ? 0 : 1));
 
-        }
-
-        [Test]
-        public void MyGet_BuildVersion_Read()
-        {
-            _arguments.HasArgument(VersionHelper.DefaultBuildVersionArgumentName).Returns(false);
-            _environment.SetEnvironmentVariable("PackageVersion", "2.3.4");
-            _environment.SetEnvironmentVariable("BuildRunner", "MyGet");
-            var versionHelper = GetVersionHelper(VersionHelper.DefaultDefaultBranchName);
-            Assert.That(versionHelper.IsMyGet, Is.EqualTo(true));
-            Assert.That(versionHelper.IsTeamCity, Is.EqualTo(false));
-            Assert.That(versionHelper.IsAppVeyor, Is.EqualTo(false));
-            Assert.That(versionHelper.GetBaseVersionString(FallBackVersion), Is.EqualTo("2.3.4"));
-        }
-
-        [Test]
-        public void MyGet_BuildVersion_UsesDefault()
-        {
-            _arguments.HasArgument(VersionHelper.DefaultBuildVersionArgumentName).Returns(false);
-            _environment.SetEnvironmentVariable("BuildRunner", "MyGet");
-            var versionHelper = GetVersionHelper(VersionHelper.DefaultDefaultBranchName);
-            Assert.That(versionHelper.IsMyGet, Is.EqualTo(true));
-            Assert.That(versionHelper.IsTeamCity, Is.EqualTo(false));
-            Assert.That(versionHelper.IsAppVeyor, Is.EqualTo(false));
-            Assert.That(versionHelper.GetBaseVersionString(FallBackVersion), Is.EqualTo(FallBackVersion));
         }
 
         [TestCase(true)]

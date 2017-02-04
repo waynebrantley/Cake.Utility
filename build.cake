@@ -5,8 +5,8 @@ var verInfo = buildHelper.GetNextVersion("1.0.0");
 buildHelper.SetNextVersion(verInfo);
 
 Task("Patch-Assembly-Info")
-    .WithCriteria(() => buildHelper.IsCiBuildEnvironment)
-    .Does(() =>
+	.WithCriteria(() => buildHelper.IsCiBuildEnvironment)
+	.Does(() =>
 {
 	buildHelper.PatchAllAssemblyInfo(verInfo, "");
 });
