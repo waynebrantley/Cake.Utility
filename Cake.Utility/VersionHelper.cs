@@ -24,6 +24,12 @@ namespace Cake.Utility
 
     }
 
+    public class MatchResult
+    {
+        public bool Success { get; set; }
+        public GroupCollection Groups { get; set; }
+    }
+
     //TeamCity project 'build number' should be set to {0}, so it is just an incrementing number.
     //This will be added to the base versions defined in environment variables.
     public class VersionHelper
@@ -63,11 +69,14 @@ namespace Cake.Utility
                 throw new ArgumentNullException(nameof(environment));
             if (log == null)
                 throw new ArgumentNullException(nameof(log));
+
+            CommitMessageMatches = new MatchResult { Success = false };
             if (IsAppVeyor)
             {
                 Branch = _appVeyorProvider.Environment.Repository.Branch;
                 CommitMessageShort = _appVeyorProvider.Environment.Repository.Commit.Message;
-                CommitMessageMatches = CommitMessageRegex.Match(_appVeyorProvider.Environment.Repository.Commit.ExtendedMessage);
+                var match = CommitMessageRegex.Match(_appVeyorProvider.Environment.Repository.Commit.ExtendedMessage);
+                CommitMessageMatches = new MatchResult { Success = match.Success, Groups = match.Groups };
             }
         }
 
@@ -90,7 +99,7 @@ namespace Cake.Utility
         public bool AutoDeploy => IsCiBuildEnvironment && IsPreRelease && !IsPullRequest && CommitMessageMatches.Success;
         public string AutoDeployTarget => CommitMessageMatches.Success ? CommitMessageMatches.Groups["argument"].Value.ToLower() : string.Empty;
 
-        public Match CommitMessageMatches { get; }
+        public MatchResult CommitMessageMatches { get; }
 
         public string GetBaseVersionString(string defaultVersion)
         {

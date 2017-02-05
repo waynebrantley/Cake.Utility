@@ -13,14 +13,14 @@ namespace Cake.Utility.Tests
     [TestFixture]
     public class BuildVersionTests
     {
-        FakeEnvironment _environment;
-        FakeLog _log;
-        ITeamCityProvider _teamCity;
-        ICakeArguments _arguments;
-        IAppVeyorProvider _appVeyor;
-        AppVeyorEnvironmentInfo _appEnvironment;
-        IGlobber _globber;
-        FakeFileSystem _fileSystem;
+        private FakeEnvironment _environment;
+        private FakeLog _log;
+        private ITeamCityProvider _teamCity;
+        private ICakeArguments _arguments;
+        private IAppVeyorProvider _appVeyor;
+        private AppVeyorEnvironmentInfo _appEnvironment;
+        private IGlobber _globber;
+        private FakeFileSystem _fileSystem;
         private const string FallBackVersion = "1.1.1";
         [SetUp]
         public void Setup()
@@ -159,6 +159,50 @@ namespace Cake.Utility.Tests
                 Assert.That(matches.Groups["argument"].Value.ToLower(), Is.EqualTo("uat4"));
             }
         }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void AppVeyor_AutoDeploy(bool isMaster)
+        {
+            _arguments.HasArgument(VersionHelper.DefaultBuildVersionArgumentName).Returns(false);
+            _appVeyor.IsRunningOnAppVeyor.Returns(true);
+            _environment.SetEnvironmentVariable("APPVEYOR_BUILD_VERSION", "2.3.4");
+            _environment.SetEnvironmentVariable("APPVEYOR_REPO_COMMIT_MESSAGE_EXTENDED", "[deploy UAT5]");
+            
+            var versionHelper = GetVersionHelper(isMaster ? VersionHelper.DefaultDefaultBranchName : "someFeature");
+
+            Assert.That(versionHelper.IsAppVeyor, Is.EqualTo(true));
+            Assert.That(versionHelper.AutoDeploy, Is.EqualTo(!isMaster));
+        }
+
+        [TestCase("[deploy UAT5]", "uat5")]
+        [TestCase("[deploy    uat7]", "uat7")]
+        public void AppVeyor_AutoDeploy_RightMachine(string command, string targetMachine)
+        {
+            _arguments.HasArgument(VersionHelper.DefaultBuildVersionArgumentName).Returns(false);
+            _appVeyor.IsRunningOnAppVeyor.Returns(true);
+            _environment.SetEnvironmentVariable("APPVEYOR_BUILD_VERSION", "2.3.4");
+            _environment.SetEnvironmentVariable("APPVEYOR_REPO_COMMIT_MESSAGE_EXTENDED", command);
+
+            var versionHelper = GetVersionHelper("someFeature");
+
+            Assert.That(versionHelper.IsAppVeyor, Is.EqualTo(true));
+            Assert.That(versionHelper.AutoDeploy, Is.EqualTo(true));
+            Assert.That(versionHelper.AutoDeployTarget, Is.EqualTo(targetMachine));
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Interactive_NoAutoDeploy(bool isMaster)
+        {
+            _arguments.HasArgument(VersionHelper.DefaultBuildVersionArgumentName).Returns(false);
+            _appVeyor.IsRunningOnAppVeyor.Returns(false);
+
+            var versionHelper = GetVersionHelper(isMaster ? VersionHelper.DefaultDefaultBranchName : "someFeature");
+
+            Assert.That(versionHelper.AutoDeploy, Is.EqualTo(false));
+        }
+
 
         [Test]
         public void RegExBuildsCorrectly()
