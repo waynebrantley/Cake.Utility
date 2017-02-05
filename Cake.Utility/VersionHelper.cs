@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Cake.Common.Build.AppVeyor;
 using Cake.Common.Build.TeamCity;
 using Cake.Common.Solution.Project.Properties;
@@ -34,10 +35,20 @@ namespace Cake.Utility
         private readonly IAppVeyorProvider _appVeyorProvider;
         private readonly IGlobber _globber;
         private readonly IFileSystem _fileSystem;
+        public static Regex CommitMessageRegex;
+
         public const string DefaultBuildVersionArgumentName = "buildVersion";
         public const string DefaultMasterBaseVersionEnvironmentVariable = "RootVersion.Master";
         public const string DefaultPreReleaseBaseVersionEnvironmentVariable = "RootVersion.Feature";
         public const string DefaultDefaultBranchName = "master";
+
+        static VersionHelper()
+        {
+            //\[(?<command>(?i)Deploy|Fred) +(?<argument>[\w\.]+)\]+
+            //http://regexstorm.net/tester?p=%5c%5b%28%3f%3ccommand%3e%28%3fi%29Deploy%7cFred%29+%2b%28%3f%3cargument%3e%5b%5cw%5c.%5d%2b%29%5c%5d%2b&i=%5bdeploy+uat4%5d+%0d%0a%5bFred+uat4%5d+%0d%0a%5bDePloy+uat4%5d+%0d%0a%5bfrEd+uat4%5d+%0d%0a%5bdeploy+uat4%5d+%0d%0a%5bFred++uat4%5d+%0d%0a%5bDePloy+++uat4%5d+%0d%0a%5bfrEd+++uat4%5d+%0d%0a
+            string[] commands = { "Deploy" };
+            CommitMessageRegex = new Regex($@"\[(?<command>(?i){string.Join("|", commands)}) +(?<argument>[\w\.]+)\]+", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+        }
         public VersionHelper(ICakeEnvironment environment, ICakeLog log, ICakeArguments arguments, ITeamCityProvider teamCityProvider,
                              IAppVeyorProvider appVeyorProvider, IGlobber globber, IFileSystem fileSystem)
         {
@@ -56,6 +67,7 @@ namespace Cake.Utility
             {
                 Branch = _appVeyorProvider.Environment.Repository.Branch;
                 CommitMessageShort = _appVeyorProvider.Environment.Repository.Commit.Message;
+                CommitMessageMatches = CommitMessageRegex.Match(_appVeyorProvider.Environment.Repository.Commit.ExtendedMessage);
             }
         }
 
@@ -74,6 +86,11 @@ namespace Cake.Utility
         public bool ShouldDeploy => IsCiBuildEnvironment && !IsPreRelease && !IsPullRequest;
         public bool IsPullRequest => IsAppVeyor && _appVeyorProvider.Environment.PullRequest.IsPullRequest;
         public string BuildEnvironmentName => IsAppVeyor ? "AppVeyor" : IsTeamCity ? "TeamCity" : "Interactive";
+
+        public bool AutoDeploy => CommitMessageMatches.Success;
+        public string AutoDeployTarget => CommitMessageMatches.Success ? CommitMessageMatches.Groups["argument"].Value.ToLower() : string.Empty;
+
+        public Match CommitMessageMatches { get; }
 
         public string GetBaseVersionString(string defaultVersion)
         {

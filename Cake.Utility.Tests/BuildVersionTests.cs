@@ -1,4 +1,5 @@
-﻿using Cake.Common.Build.AppVeyor;
+﻿using System.Text.RegularExpressions;
+using Cake.Common.Build.AppVeyor;
 using Cake.Common.Build.AppVeyor.Data;
 using Cake.Common.Build.TeamCity;
 using Cake.Core;
@@ -140,6 +141,33 @@ namespace Cake.Utility.Tests
             Assert.That(info.IsPreRelease, Is.EqualTo(true));
             Assert.That(info.RootVersion, Is.EqualTo("2.3.4"));
             Assert.That(info.FullVersion, Is.EqualTo(info.RootVersion + "-1234567890123456789"));
+        }
+
+        [TestCase("[deploy uat4]", true)]
+        [TestCase("deploy uat4", false)]
+        [TestCase("[DePloy   Uat4]", true)]
+        [TestCase("[DoPloy   Uat4]", false)]
+        [TestCase("[DePloy   ]", false)]
+        public void DetectDeploymentTarget(string expression, bool shouldMatch)
+        {
+            var matches = VersionHelper.CommitMessageRegex.Match(expression);
+            Assert.That(matches.Success, Is.EqualTo(shouldMatch));
+            if (matches.Success)
+            {
+                Assert.That(matches.Groups.Count, Is.EqualTo(3));
+                Assert.That(matches.Groups["command"].Value.ToLower(), Is.EqualTo("deploy"));
+                Assert.That(matches.Groups["argument"].Value.ToLower(), Is.EqualTo("uat4"));
+            }
+        }
+
+        [Test]
+        public void RegExBuildsCorrectly()
+        {
+            string[] commands = { "Deploy" };
+            var regExString= $@"\[(?<command>(?i){string.Join("|", commands)}) +(?<argument>[\w\.]+)\]+";
+            Assert.That(regExString, Is.EqualTo(@"\[(?<command>(?i)Deploy) +(?<argument>[\w\.]+)\]+"));
+            var builtRegEx = new Regex(regExString);
+            Assert.That(builtRegEx.IsMatch("[deploy uat4]"), Is.True);
         }
 
         private VersionHelper GetVersionHelper(string branch)
