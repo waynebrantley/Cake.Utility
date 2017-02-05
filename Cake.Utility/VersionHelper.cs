@@ -43,7 +43,7 @@ namespace Cake.Utility
         private readonly IGlobber _globber;
         private readonly IFileSystem _fileSystem;
         public static Regex CommitMessageRegex;
-        private bool isDefaultLoggingLevel = true;
+        private readonly bool _isDefaultLoggingLevel = true;
 
         public const string DefaultBuildVersionArgumentName = "buildVersion";
         public const string DefaultMasterBaseVersionEnvironmentVariable = "RootVersion.Master";
@@ -72,15 +72,6 @@ namespace Cake.Utility
             if (log == null)
                 throw new ArgumentNullException(nameof(log));
 
-            CommitMessageMatches = new MatchResult { Success = false };
-            if (IsAppVeyor)
-            {
-                Branch = _appVeyorProvider.Environment.Repository.Branch;
-                CommitMessageShort = _appVeyorProvider.Environment.Repository.Commit.Message;
-                var match = CommitMessageRegex.Match(_appVeyorProvider.Environment.Repository.Commit.ExtendedMessage);
-                CommitMessageMatches = new MatchResult { Success = match.Success, Groups = match.Groups };
-            }
-
             string envLogging = environment.GetEnvironmentVariable("LOGGINGLEVEL");
             if (!string.IsNullOrWhiteSpace(envLogging))
             {
@@ -88,13 +79,35 @@ namespace Cake.Utility
                 if (Enum.TryParse(envLogging, true, out loggingEnum))
                 {
                     log.Verbosity = loggingEnum;
-                    log.Information($"Logging Level Set: {loggingEnum}");
-                    isDefaultLoggingLevel = false;
+                    log.Information($"Logging Level Set: {loggingEnum}", Verbosity.Quiet);
+                    _isDefaultLoggingLevel = false;
                 }
 
             }
             else
-                isDefaultLoggingLevel = !arguments.HasArgument("verbosity");
+                _isDefaultLoggingLevel = !arguments.HasArgument("verbosity");
+
+
+            CommitMessageMatches = new MatchResult { Success = false };
+            if (IsAppVeyor)
+            {
+                Branch = _appVeyorProvider.Environment.Repository.Branch;
+                CommitMessageShort = _appVeyorProvider.Environment.Repository.Commit.Message;
+                var match = CommitMessageRegex.Match(_appVeyorProvider.Environment.Repository.Commit.ExtendedMessage);
+                CommitMessageMatches = new MatchResult { Success = match.Success, Groups = match.Groups };
+                _log.Debug($"Branch:{Branch}");
+                _log.Debug($"Commit Msg Short:{CommitMessageShort}");
+                _log.Debug($"Commit Msg Extended:{_appVeyorProvider.Environment.Repository.Commit.ExtendedMessage}");
+                _log.Debug($"Commit Message Cmd Match:{CommitMessageMatches.Success}");
+                if (_log.Verbosity >= Verbosity.Verbose && CommitMessageMatches.Success)
+                {
+                    _log.Debug("RegEx Group Matches");
+                    foreach (string groupName in CommitMessageRegex.GetGroupNames())
+                    {
+                        _log.Debug($"{groupName} : {CommitMessageMatches.Groups[groupName].Value}");
+                    }
+                }
+            }
         }
 
         public string BuildVersionArgumentName { get; set; } = DefaultBuildVersionArgumentName;
@@ -116,8 +129,8 @@ namespace Cake.Utility
         public bool AutoDeploy => IsCiBuildEnvironment && IsPreRelease && !IsPullRequest && CommitMessageMatches.Success;
         public string AutoDeployTarget => CommitMessageMatches.Success ? CommitMessageMatches.Groups["argument"].Value.ToLower() : string.Empty;
 
-        public NuGetVerbosity NuGetLoggingLevel => isDefaultLoggingLevel || _log.Verbosity == Verbosity.Normal ? NuGetVerbosity.Normal : (_log.Verbosity < Verbosity.Normal ? NuGetVerbosity.Quiet : NuGetVerbosity.Detailed);
-        public Verbosity MsBuildLoggingLevel => isDefaultLoggingLevel ? Verbosity.Minimal : _log.Verbosity;
+        public NuGetVerbosity NuGetLoggingLevel => _isDefaultLoggingLevel || _log.Verbosity == Verbosity.Normal ? NuGetVerbosity.Normal : (_log.Verbosity < Verbosity.Normal ? NuGetVerbosity.Quiet : NuGetVerbosity.Detailed);
+        public Verbosity MsBuildLoggingLevel => _isDefaultLoggingLevel ? Verbosity.Minimal : _log.Verbosity;
 
         public MatchResult CommitMessageMatches { get; }
 
@@ -128,6 +141,7 @@ namespace Cake.Utility
             if (IsAppVeyor)
             {
                 string version = _appVeyorProvider.Environment.Build.Version;
+                _log.Verbose($"AppVeyor Build Version from Env Variable:{version}");
                 return string.IsNullOrWhiteSpace(version) ? defaultVersion : version;
             }
             if (IsTeamCity)
@@ -172,6 +186,7 @@ namespace Cake.Utility
                 string extraLabel = "-" + Branch.Replace("_", "");
                 if (extraLabel.Length > 20)
                     extraLabel = extraLabel.Substring(0, 20);
+                _log.Verbose($"PreRelease detected, label is :{extraLabel}");
                 result.FullVersion = result.RootVersion + extraLabel;
             }
             else
@@ -186,6 +201,7 @@ namespace Cake.Utility
             var assemblyFiles = _globber.GetFiles("./**/AssemblyInfo.cs");
             foreach (var file in assemblyFiles)
             {
+                _log.Verbose($"Found :{file}");
                 if (file.ToString().Contains("packages/"))
                     continue;
                 var assemblyInfo = parser.Parse(file);
@@ -207,7 +223,13 @@ namespace Cake.Utility
             if (files.Count == 0)
                 throw new Exception("Solution file not found");
             if (files.Count > 1)
+            {
                 _log.Warning("Multiple solution files found");
+                foreach (var file in files)
+                {
+                    _log.Warning(file.FullPath);
+                }
+            }
             return new SolutionInfoResult
             {
                 SolutionFileAndPath = files[0].FullPath,

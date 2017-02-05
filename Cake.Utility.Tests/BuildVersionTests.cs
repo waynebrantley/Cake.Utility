@@ -1,8 +1,10 @@
-﻿using System.Text.RegularExpressions;
+﻿using System;
+using System.Text.RegularExpressions;
 using Cake.Common.Build.AppVeyor;
 using Cake.Common.Build.AppVeyor.Data;
 using Cake.Common.Build.TeamCity;
 using Cake.Core;
+using Cake.Core.Diagnostics;
 using Cake.Core.IO;
 using Cake.Testing;
 using NSubstitute;
@@ -189,6 +191,12 @@ namespace Cake.Utility.Tests
             Assert.That(versionHelper.IsAppVeyor, Is.EqualTo(true));
             Assert.That(versionHelper.AutoDeploy, Is.EqualTo(true));
             Assert.That(versionHelper.AutoDeployTarget, Is.EqualTo(targetMachine));
+
+
+            foreach(string groupName in VersionHelper.CommitMessageRegex.GetGroupNames())
+            {
+                Console.WriteLine($"{groupName} : {versionHelper.CommitMessageMatches.Groups[groupName].Value}");
+            }
         }
 
         [TestCase(true)]
