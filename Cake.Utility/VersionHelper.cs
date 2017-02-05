@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Cake.Common.Build.AppVeyor;
 using Cake.Common.Build.TeamCity;
 using Cake.Common.Solution.Project.Properties;
+using Cake.Common.Tools.NuGet;
 using Cake.Core;
 using Cake.Core.Diagnostics;
 using Cake.Core.IO;
@@ -42,6 +43,7 @@ namespace Cake.Utility
         private readonly IGlobber _globber;
         private readonly IFileSystem _fileSystem;
         public static Regex CommitMessageRegex;
+        private bool isDefaultLoggingLevel = true;
 
         public const string DefaultBuildVersionArgumentName = "buildVersion";
         public const string DefaultMasterBaseVersionEnvironmentVariable = "RootVersion.Master";
@@ -78,6 +80,21 @@ namespace Cake.Utility
                 var match = CommitMessageRegex.Match(_appVeyorProvider.Environment.Repository.Commit.ExtendedMessage);
                 CommitMessageMatches = new MatchResult { Success = match.Success, Groups = match.Groups };
             }
+
+            string envLogging = environment.GetEnvironmentVariable("LOGGINGLEVEL");
+            if (!string.IsNullOrWhiteSpace(envLogging))
+            {
+                Verbosity loggingEnum;
+                if (Enum.TryParse(envLogging, true, out loggingEnum))
+                {
+                    log.Verbosity = loggingEnum;
+                    log.Information($"Logging Level Set: {loggingEnum}");
+                    isDefaultLoggingLevel = false;
+                }
+
+            }
+            else
+                isDefaultLoggingLevel = !arguments.HasArgument("verbosity");
         }
 
         public string BuildVersionArgumentName { get; set; } = DefaultBuildVersionArgumentName;
@@ -98,6 +115,9 @@ namespace Cake.Utility
 
         public bool AutoDeploy => IsCiBuildEnvironment && IsPreRelease && !IsPullRequest && CommitMessageMatches.Success;
         public string AutoDeployTarget => CommitMessageMatches.Success ? CommitMessageMatches.Groups["argument"].Value.ToLower() : string.Empty;
+
+        public NuGetVerbosity NuGetLoggingLevel => isDefaultLoggingLevel || _log.Verbosity == Verbosity.Normal ? NuGetVerbosity.Normal : (_log.Verbosity < Verbosity.Normal ? NuGetVerbosity.Quiet : NuGetVerbosity.Detailed);
+        public Verbosity MsBuildLoggingLevel => isDefaultLoggingLevel ? Verbosity.Minimal : _log.Verbosity;
 
         public MatchResult CommitMessageMatches { get; }
 
