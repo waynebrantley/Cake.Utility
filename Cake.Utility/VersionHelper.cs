@@ -356,5 +356,10 @@ namespace Cake.Utility
             return msBuildSettings;
         }
 
+        public MSBuildSettings GetMSBuildSettings()
+        {
+            return GetMSBuildSettings(new MSBuildSettingsBuilder());
+        }
+
     }
 }
