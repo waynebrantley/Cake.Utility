@@ -4,9 +4,8 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Cake.Common.Build.AppVeyor;
 using Cake.Common.Build.TeamCity;
-using Cake.Common.IO;
-using Cake.Common.IO.Paths;
 using Cake.Common.Solution.Project.Properties;
+using Cake.Common.Tools.MSBuild;
 using Cake.Common.Tools.NuGet;
 using Cake.Common.Tools.NUnit;
 using Cake.Core;
@@ -16,6 +15,14 @@ using Cake.Core.Tooling;
 
 namespace Cake.Utility
 {
+
+    public class MSBuildSettingsBuilder
+    {
+        public bool OctoPackToArtifacts { get; set; }
+        public bool PublishOnBuild { get; set; }
+        public string PublishProfile { get; set; }
+    }
+
     public class VersionResult
     {
         public string RootVersion { get; set; }
@@ -285,6 +292,7 @@ namespace Cake.Utility
                 _appVeyorProvider.UploadTestResults(testResultsFile, testType);
         }
 
+
         public SolutionInfoResult GetSolutionToBuild()
         {
             var files = _globber.GetFiles("./**/*.sln").ToList();
@@ -304,5 +312,35 @@ namespace Cake.Utility
                 SolutionFilename = files[0].GetFilename().ToString()
             };
         }
+
+        
+        public MSBuildSettings GetMSBuildSettings(MSBuildSettingsBuilder settings)
+        {
+            
+            var msBuildSettings = new MSBuildSettings
+            {
+                Verbosity = MsBuildLoggingLevel, //http://cakebuild.net/api/Cake.Core.Diagnostics/Verbosity/
+                Configuration = Configuration,
+                //ToolVersion = MSBuildToolVersion.VS2015,
+                //PlatformTarget = PlatformTarget.MSIL
+            };
+            string artifactPath = new DirectoryPath("./Artifacts").MakeAbsolute(_environment).FullPath;
+            if (settings.OctoPackToArtifacts)
+            {
+                msBuildSettings.Properties.Add("RunOctoPack", new List<string> { "true" });
+                msBuildSettings.Properties.Add("OctoPackPublishPackageToFileShare", new List<string> { artifactPath });
+                //msBuildSettings.Properties.Add("OctoPackEnforceAddingFiles", new List<string> { "true" });
+            }
+
+            if (settings.PublishOnBuild)
+            {
+                msBuildSettings.Properties.Add("DeployOnBuild", new List<string> { "true" });
+                msBuildSettings.Properties.Add("PublishProfile", new List<string> { settings.PublishProfile });
+                msBuildSettings.Properties.Add("ExcludeGeneratedDebugSymbol", new List<string> { "false" });
+            }
+
+            return msBuildSettings;
+        }
+
     }
 }
