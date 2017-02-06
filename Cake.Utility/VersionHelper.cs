@@ -92,7 +92,7 @@ namespace Cake.Utility
                 if (Enum.TryParse(envLogging, true, out loggingEnum))
                 {
                     log.Verbosity = loggingEnum;
-                    log.Information($"Logging Level Set: {loggingEnum}", Verbosity.Quiet);
+                    log.Information($"Logging Level: {loggingEnum}", Verbosity.Quiet);
                     _isDefaultLoggingLevel = false;
                 }
 
@@ -200,7 +200,7 @@ namespace Cake.Utility
                 string extraLabel = "-" + Branch.Replace("_", "");
                 if (extraLabel.Length > 20)
                     extraLabel = extraLabel.Substring(0, 20);
-                _log.Verbose($"PreRelease detected, label is :{extraLabel}");
+                _log.Verbose($"PreRelease detected:{extraLabel}");
                 result.FullVersion = result.RootVersion + extraLabel;
             }
             else
@@ -215,7 +215,7 @@ namespace Cake.Utility
             var assemblyFiles = _globber.GetFiles("./**/AssemblyInfo.cs");
             foreach (var file in assemblyFiles)
             {
-                _log.Verbose($"Found :{file}");
+                _log.Verbose($"Possibly file to patch:{file}");
                 if (file.ToString().Contains("packages/"))
                     continue;
                 var assemblyInfo = parser.Parse(file);
@@ -268,6 +268,11 @@ namespace Cake.Utility
             {
                 _log.Error("No Tests Found");
                 return;
+            }
+
+            foreach (var file in assemblies)
+            {
+                _log.Verbose($"Using test asembly:{file.FullPath}");
             }
 
             var testResultsFile = new FilePath("./TestResult.xml");
