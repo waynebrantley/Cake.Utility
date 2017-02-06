@@ -271,6 +271,7 @@ namespace Cake.Utility
         {
 
             var assemblies = _globber.GetFiles("./**/bin/" + Configuration + "/*.Tests.dll").ToList();
+            assemblies = assemblies.Union(_globber.GetFiles("./**/bin/" + Configuration + "/*.Test.dll")).ToList();
             if (assemblies.Count == 0)
             {
                 _log.Error("No Tests Found");
