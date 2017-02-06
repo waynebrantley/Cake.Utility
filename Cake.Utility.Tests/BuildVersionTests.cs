@@ -4,8 +4,8 @@ using Cake.Common.Build.AppVeyor;
 using Cake.Common.Build.AppVeyor.Data;
 using Cake.Common.Build.TeamCity;
 using Cake.Core;
-using Cake.Core.Diagnostics;
 using Cake.Core.IO;
+using Cake.Core.Tooling;
 using Cake.Testing;
 using NSubstitute;
 using NUnit.Framework;
@@ -23,6 +23,8 @@ namespace Cake.Utility.Tests
         private AppVeyorEnvironmentInfo _appEnvironment;
         private IGlobber _globber;
         private FakeFileSystem _fileSystem;
+        private IProcessRunner _processRunner;
+        private IToolLocator _toolLocator;
         private const string FallBackVersion = "1.1.1";
         [SetUp]
         public void Setup()
@@ -36,6 +38,8 @@ namespace Cake.Utility.Tests
             _appVeyor.Environment.Returns(_appEnvironment);
             _globber = Substitute.For<IGlobber>();
             _fileSystem = new FakeFileSystem(_environment);
+            _processRunner = Substitute.For<IProcessRunner>();
+            _toolLocator = Substitute.For<IToolLocator>();
         }
 
         [Test]
@@ -224,7 +228,7 @@ namespace Cake.Utility.Tests
 
         private VersionHelper GetVersionHelper(string branch)
         {
-            return new VersionHelper(_environment, _log, _arguments, _teamCity, _appVeyor, _globber, _fileSystem) { Branch = branch };
+            return new VersionHelper(_environment, _log, _arguments, _teamCity, _appVeyor, _globber, _fileSystem, _processRunner, _toolLocator) { Branch = branch };
         }
     }
 }

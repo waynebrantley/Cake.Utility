@@ -1,13 +1,18 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Cake.Common.Build.AppVeyor;
 using Cake.Common.Build.TeamCity;
+using Cake.Common.IO;
+using Cake.Common.IO.Paths;
 using Cake.Common.Solution.Project.Properties;
 using Cake.Common.Tools.NuGet;
+using Cake.Common.Tools.NUnit;
 using Cake.Core;
 using Cake.Core.Diagnostics;
 using Cake.Core.IO;
+using Cake.Core.Tooling;
 
 namespace Cake.Utility
 {
@@ -42,6 +47,8 @@ namespace Cake.Utility
         private readonly IAppVeyorProvider _appVeyorProvider;
         private readonly IGlobber _globber;
         private readonly IFileSystem _fileSystem;
+        private readonly IProcessRunner _processRunner;
+        private readonly IToolLocator _tools;
         public static Regex CommitMessageRegex;
         private readonly bool _isDefaultLoggingLevel = true;
 
@@ -58,7 +65,7 @@ namespace Cake.Utility
             CommitMessageRegex = new Regex($@"\[(?<command>(?i){string.Join("|", commands)}) +(?<argument>[\w\.]+)\]+", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
         }
         public VersionHelper(ICakeEnvironment environment, ICakeLog log, ICakeArguments arguments, ITeamCityProvider teamCityProvider,
-                             IAppVeyorProvider appVeyorProvider, IGlobber globber, IFileSystem fileSystem)
+                             IAppVeyorProvider appVeyorProvider, IGlobber globber, IFileSystem fileSystem, IProcessRunner processRunner, IToolLocator tools)
         {
             _environment = environment;
             _log = log;
@@ -67,10 +74,16 @@ namespace Cake.Utility
             _appVeyorProvider = appVeyorProvider;
             _globber = globber;
             _fileSystem = fileSystem;
+            _processRunner = processRunner;
+            _tools = tools;
             if (environment == null)
                 throw new ArgumentNullException(nameof(environment));
             if (log == null)
                 throw new ArgumentNullException(nameof(log));
+
+            Configuration = environment.GetEnvironmentVariable("CONFIGURATION");
+            if (string.IsNullOrWhiteSpace(Configuration))
+                Configuration = _arguments.HasArgument("configuration") ? _arguments.GetArgument("configuration") : "Release";
 
             string envLogging = environment.GetEnvironmentVariable("LOGGINGLEVEL");
             if (!string.IsNullOrWhiteSpace(envLogging))
@@ -116,6 +129,7 @@ namespace Cake.Utility
         public string DefaultBranchName { get; set; } = DefaultDefaultBranchName;
 
         public string Branch { get; set; } = string.Empty;
+        public string Configuration { get; set; }
         public string CommitMessageShort { get; set; }
         public bool IsTeamCity => _teamCityProvider.IsRunningOnTeamCity;
         public bool IsAppVeyor => _appVeyorProvider.IsRunningOnAppVeyor;
@@ -215,6 +229,55 @@ namespace Cake.Utility
                     Copyright = string.Format(copyrightText, DateTime.Now.Year)
                 });
             }
+        }
+
+        private void NUnit2Test(List<FilePath> assemblies, FilePath outputFile, string excludeFilter)
+        {
+            var settings = new NUnitSettings
+            {
+                NoLogo = true,
+                NoResults = IsInteractiveBuild,
+                ResultsFile = outputFile,
+                Exclude = excludeFilter
+            };
+
+            var runner = new NUnitRunner(_fileSystem, _environment, _processRunner, _tools);
+            runner.Run(assemblies, settings);
+        }
+
+        private void NUnit3Test(List<FilePath> assemblies, FilePath outputFile, string whereFilter)
+        {
+            var settings = new NUnit3Settings
+            {
+                NoHeader = true,
+                NoResults = IsInteractiveBuild,
+                Verbose = _log.Verbosity > Verbosity.Normal,
+                OutputFile = outputFile,
+                ResultFormat = "AppVeyor",
+                Where = whereFilter
+            };
+            var runner = new NUnit3Runner(_fileSystem, _environment, _processRunner, _tools);
+            runner.Run(assemblies, settings);
+        }
+
+        public void RunNUnitTests(string whereFilter, AppVeyorTestResultsType testType)
+        {
+
+            var assemblies = _globber.GetFiles("./**/bin/" + Configuration + "/*.Tests.dll").ToList();
+            if (assemblies.Count == 0)
+            {
+                _log.Error("No Tests Found");
+                return;
+            }
+
+            var testResultsFile = new FilePath("./TestResult.xml");
+            if (testType == AppVeyorTestResultsType.NUnit3)
+                NUnit3Test(assemblies, testResultsFile, whereFilter);
+            else
+                NUnit2Test(assemblies, testResultsFile, whereFilter);
+
+            if (IsAppVeyor)
+                _appVeyorProvider.UploadTestResults(testResultsFile, testType);
         }
 
         public SolutionInfoResult GetSolutionToBuild()
