@@ -282,7 +282,8 @@ namespace Cake.Utility
                 _log.Verbose($"Using test asembly:{file.FullPath}");
             }
 
-            var testResultsFile = new FilePath("./TestResult.xml");
+            //NUnit test runners output if a file is given.  Should only output if NoResults is false...but it doesnt..
+            var testResultsFile = IsInteractiveBuild ? null : new FilePath("./TestResult.xml");
             if (testType == AppVeyorTestResultsType.NUnit3)
                 NUnit3Test(assemblies, testResultsFile, whereFilter);
             else
