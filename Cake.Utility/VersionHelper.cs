@@ -288,14 +288,18 @@ namespace Cake.Utility
 
             //NUnit test runners output if a file is given.  Should only output if NoResults is false...but it doesnt..
             var testResultsFile = IsInteractiveBuild ? null : new FilePath("./TestResult.xml");
-            if (testType == AppVeyorTestResultsType.NUnit3)
-                NUnit3Test(assemblies, testResultsFile, whereFilter);
-            else
-                NUnit2Test(assemblies, testResultsFile, whereFilter);
-
-            if (IsAppVeyor)
-                _appVeyorProvider.UploadTestResults(testResultsFile, testType);
-
+            try
+            {
+                if (testType == AppVeyorTestResultsType.NUnit3)
+                    NUnit3Test(assemblies, testResultsFile, whereFilter);
+                else
+                    NUnit2Test(assemblies, testResultsFile, whereFilter);
+            }
+            finally
+            {
+                if (IsAppVeyor)
+                    _appVeyorProvider.UploadTestResults(testResultsFile, testType);
+            }
         }
 
         public void UploadArtifactsFolder()
