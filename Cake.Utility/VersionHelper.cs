@@ -291,6 +291,18 @@ namespace Cake.Utility
 
             if (IsAppVeyor)
                 _appVeyorProvider.UploadTestResults(testResultsFile, testType);
+
+        }
+
+        public void UploadArtifactsFolder()
+        {
+            var artifacts = _globber.GetFiles("./Artifacts/*.*").ToList();
+            _log.Information($"Looking for artifacts in './Artifacts/*.*'");
+            foreach (var artifact in artifacts)
+            {
+                _log.Information($"Found artifact '{artifact.FullPath}' - Uploading");
+                _appVeyorProvider.UploadArtifact(artifact);
+            }
         }
 
 
