@@ -4,13 +4,16 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Cake.Common.Build.AppVeyor;
 using Cake.Common.Build.TeamCity;
+using Cake.Common.IO;
 using Cake.Common.Solution.Project.Properties;
 using Cake.Common.Tools.MSBuild;
 using Cake.Common.Tools.NuGet;
+using Cake.Common.Tools.NuGet.Pack;
 using Cake.Common.Tools.NUnit;
 using Cake.Core;
 using Cake.Core.Diagnostics;
 using Cake.Core.IO;
+using Cake.Core.IO.NuGet;
 using Cake.Core.Tooling;
 
 namespace Cake.Utility
@@ -327,10 +330,10 @@ namespace Cake.Utility
             };
         }
 
-        
+
         public MSBuildSettings GetMSBuildSettings(MSBuildSettingsBuilder settings)
         {
-            
+
             var msBuildSettings = new MSBuildSettings
             {
                 Verbosity = MsBuildLoggingLevel, //http://cakebuild.net/api/Cake.Core.Diagnostics/Verbosity/
@@ -359,6 +362,38 @@ namespace Cake.Utility
         public MSBuildSettings GetMSBuildSettings()
         {
             return GetMSBuildSettings(new MSBuildSettingsBuilder());
+        }
+
+        public void CreatePackagesForAllNuSpecOutputToArtifactsFolder(string fullVersion)
+        {
+            var files = _globber.GetFiles("./**/*.nuspec").ToList();
+            if (files.Count == 0)
+                throw new Exception("No .nuspec files found to create packages from");
+
+            var nuGetToolResolver = new NuGetToolResolver(_fileSystem, _environment, _tools);
+            var packer = new NuGetPacker(_fileSystem, _environment, _processRunner, _log, _tools, nuGetToolResolver);
+
+            var output = new DirectoryPath("./Artifacts");
+            var directory = _fileSystem.GetDirectory(output);
+            if (!directory.Exists)
+                directory.Create();
+
+            var nuGetPackSettings = new NuGetPackSettings
+            {
+                Version = fullVersion,
+                OutputDirectory = output.FullPath,
+                IncludeReferencedProjects = true,
+                Properties = new Dictionary<string, string> { { "Configuration", Configuration } },
+            };
+
+            foreach (var nuspec in files)
+            {
+                _log.Information(nuspec.FullPath);
+                var csproj = nuspec.ChangeExtension(".csproj");
+                _log.Information(csproj.FullPath);
+                packer.Pack(csproj.FullPath, nuGetPackSettings);
+            }
+
         }
 
     }
