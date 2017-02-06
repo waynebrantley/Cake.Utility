@@ -260,7 +260,7 @@ namespace Cake.Utility
             runner.Run(assemblies, settings);
         }
 
-        public void RunNUnitTests(string whereFilter, AppVeyorTestResultsType testType)
+        public void RunNUnitTests(AppVeyorTestResultsType testType, string whereFilter = null)
         {
 
             var assemblies = _globber.GetFiles("./**/bin/" + Configuration + "/*.Tests.dll").ToList();
