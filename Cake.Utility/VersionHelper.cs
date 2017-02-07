@@ -314,17 +314,31 @@ namespace Cake.Utility
         }
 
 
-        public SolutionInfoResult GetSolutionToBuild()
+        public SolutionInfoResult GetSolutionToBuild(string fileName = null)
         {
             var files = _globber.GetFiles("./**/*.sln").ToList();
             if (files.Count == 0)
                 throw new Exception("Solution file not found");
             if (files.Count > 1)
             {
-                _log.Warning("Multiple solution files found");
-                foreach (var file in files)
+                if (string.IsNullOrWhiteSpace(fileName))
                 {
-                    _log.Warning(file.FullPath);
+                    _log.Warning("Multiple solution files found");
+                    foreach (var file in files)
+                    {
+                        _log.Warning(file.FullPath);
+                    }
+                }
+                else
+                {
+                    var matchFile = files.FirstOrDefault(f => string.Compare(f.GetFilename().ToString(), fileName, StringComparison.OrdinalIgnoreCase) == 0);
+                    if (matchFile == null)
+                        throw new Exception($"Solution file specified as {fileName} was not found");
+                    return new SolutionInfoResult
+                    {
+                        SolutionFileAndPath = matchFile.FullPath,
+                        SolutionFilename = matchFile.GetFilename().ToString()
+                    };
                 }
             }
             return new SolutionInfoResult
