@@ -2,7 +2,6 @@
 using System.Text.RegularExpressions;
 using Cake.Common.Build.AppVeyor;
 using Cake.Common.Build.AppVeyor.Data;
-using Cake.Common.Build.TeamCity;
 using Cake.Core;
 using Cake.Core.IO;
 using Cake.Core.Tooling;
@@ -17,7 +16,6 @@ namespace Cake.Utility.Tests
     {
         private FakeEnvironment _environment;
         private FakeLog _log;
-        private ITeamCityProvider _teamCity;
         private ICakeArguments _arguments;
         private IAppVeyorProvider _appVeyor;
         private AppVeyorEnvironmentInfo _appEnvironment;
@@ -31,7 +29,6 @@ namespace Cake.Utility.Tests
         {
             _environment = FakeEnvironment.CreateWindowsEnvironment();
             _log = new FakeLog();
-            _teamCity = Substitute.For<ITeamCityProvider>();
             _arguments = Substitute.For<ICakeArguments>();
             _appVeyor = Substitute.For<IAppVeyorProvider>();
             _appEnvironment = new AppVeyorEnvironmentInfo(_environment);
@@ -49,7 +46,6 @@ namespace Cake.Utility.Tests
             _arguments.GetArgument(VersionHelper.DefaultBuildVersionArgumentName).Returns("2.3.4");
             var versionHelper = GetVersionHelper(VersionHelper.DefaultDefaultBranchName);
             Assert.That(versionHelper.GetBaseVersionString(FallBackVersion), Is.EqualTo("2.3.4"));
-            Assert.That(versionHelper.IsTeamCity, Is.EqualTo(false));
             Assert.That(versionHelper.IsAppVeyor, Is.EqualTo(false));
         }
 
@@ -60,7 +56,6 @@ namespace Cake.Utility.Tests
             var versionHelper = GetVersionHelper(VersionHelper.DefaultDefaultBranchName);
             var info = versionHelper.GetNextVersion(FallBackVersion);
             Assert.That(versionHelper.GetBaseVersionString(FallBackVersion), Is.EqualTo(FallBackVersion));
-            Assert.That(versionHelper.IsTeamCity, Is.EqualTo(false));
             Assert.That(versionHelper.IsAppVeyor, Is.EqualTo(false));
 
         }
@@ -74,48 +69,8 @@ namespace Cake.Utility.Tests
             _environment.SetEnvironmentVariable("APPVEYOR_BUILD_VERSION", "2.3.4");
             var versionHelper = GetVersionHelper(isMaster ? VersionHelper.DefaultDefaultBranchName : "someFeature");
 
-            Assert.That(versionHelper.IsTeamCity, Is.EqualTo(false));
             Assert.That(versionHelper.IsAppVeyor, Is.EqualTo(true));
             Assert.That(versionHelper.GetBaseVersionString(FallBackVersion), Is.EqualTo("2.3.4"));
-        }
-
-        [TestCase(true)]
-        [TestCase(false)]
-        public void TeamCity_BuildVersion_Read(bool isMaster)
-        {
-            _arguments.HasArgument(VersionHelper.DefaultBuildVersionArgumentName).Returns(false);
-            _teamCity.IsRunningOnTeamCity.Returns(true);
-            _environment.SetEnvironmentVariable("BUILD_NUMBER", "12");
-            _environment.SetEnvironmentVariable(VersionHelper.DefaultMasterBaseVersionEnvironmentVariable, "2.3");
-            _environment.SetEnvironmentVariable(VersionHelper.DefaultPreReleaseBaseVersionEnvironmentVariable, "1.2");
-            var versionHelper = GetVersionHelper(isMaster ? VersionHelper.DefaultDefaultBranchName : "someFeature");
-            Assert.That(versionHelper.IsTeamCity, Is.EqualTo(true));
-            Assert.That(versionHelper.IsAppVeyor, Is.EqualTo(false));
-            if (isMaster)
-                Assert.That(versionHelper.GetBaseVersionString(FallBackVersion), Is.EqualTo("2.3.12"));
-            else
-                Assert.That(versionHelper.GetBaseVersionString(FallBackVersion), Is.EqualTo("1.2.12"));
-        }
-
-        [TestCase(true, false)]
-        [TestCase(false, true)]
-        [TestCase(true, true)]
-        [TestCase(false, false)]
-        public void TeamCity_BuildVersion_NoEnvCreatesLogs(bool provideMaster, bool providePrerelease)
-        {
-            _arguments.HasArgument(VersionHelper.DefaultBuildVersionArgumentName).Returns(false);
-            _teamCity.IsRunningOnTeamCity.Returns(true);
-            _environment.SetEnvironmentVariable("BUILD_NUMBER", "12");
-            if (provideMaster)
-                _environment.SetEnvironmentVariable(VersionHelper.DefaultMasterBaseVersionEnvironmentVariable, "2.3");
-            if (providePrerelease)
-                _environment.SetEnvironmentVariable(VersionHelper.DefaultPreReleaseBaseVersionEnvironmentVariable, "1.2");
-            var versionHelper = GetVersionHelper(VersionHelper.DefaultDefaultBranchName);
-            Assert.That(versionHelper.IsTeamCity, Is.EqualTo(true));
-            if (!provideMaster || !providePrerelease)
-                Assert.That(versionHelper.GetBaseVersionString(FallBackVersion), Is.EqualTo(FallBackVersion));
-            Assert.That(_log.Entries.Count, Is.EqualTo(provideMaster && providePrerelease ? 0 : 1));
-
         }
 
         [TestCase(true)]
@@ -228,7 +183,7 @@ namespace Cake.Utility.Tests
 
         private VersionHelper GetVersionHelper(string branch)
         {
-            return new VersionHelper(_environment, _log, _arguments, _teamCity, _appVeyor, _globber, _fileSystem, _processRunner, _toolLocator) { Branch = branch };
+            return new VersionHelper(_environment, _log, _arguments,  _appVeyor, _globber, _fileSystem, _processRunner, _toolLocator) { Branch = branch };
         }
     }
 }

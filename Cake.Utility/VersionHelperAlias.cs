@@ -13,7 +13,7 @@ namespace Cake.Utility
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
 
-            return new VersionHelper(context.Environment, context.Log, context.Arguments, context.TeamCity(), 
+            return new VersionHelper(context.Environment, context.Log, context.Arguments, 
                                      context.AppVeyor(), context.Globber, context.FileSystem, context.ProcessRunner, context.Tools);
         }
 
@@ -22,7 +22,7 @@ namespace Cake.Utility
         {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
-            var versionInfo = new VersionHelper(context.Environment, context.Log, context.Arguments, context.TeamCity(),
+            var versionInfo = new VersionHelper(context.Environment, context.Log, context.Arguments, 
                                                 context.AppVeyor(), context.Globber, context.FileSystem, context.ProcessRunner, context.Tools)
             {
                 Branch = branch
