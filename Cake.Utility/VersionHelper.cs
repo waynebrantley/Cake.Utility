@@ -67,7 +67,7 @@ namespace Cake.Utility
             string[] commands = { "Deploy" };
             CommitMessageRegex = new Regex($@"\[(?<command>(?i){string.Join("|", commands)}) +(?<argument>[\w\.]+)\]+", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
         }
-        public VersionHelper(ICakeEnvironment environment, ICakeLog log, ICakeArguments arguments, 
+        public VersionHelper(ICakeEnvironment environment, ICakeLog log, ICakeArguments arguments,
                              IAppVeyorProvider appVeyorProvider, IGlobber globber, IFileSystem fileSystem, IProcessRunner processRunner, IToolLocator tools)
         {
             _environment = environment;
@@ -142,6 +142,7 @@ namespace Cake.Utility
         public bool IsAppVeyor => _appVeyorProvider.IsRunningOnAppVeyor;
         public bool IsInteractiveBuild => !IsAppVeyor;
         public bool IsCiBuildEnvironment => IsAppVeyor;
+        public bool ShouldUploadArtifacts => IsCiBuildEnvironment && !IsPullRequest;
         public bool IsPreRelease => string.Compare(Branch, DefaultBranchName, StringComparison.OrdinalIgnoreCase) != 0;
         public bool ShouldDeploy => IsCiBuildEnvironment && !IsPreRelease && !IsPullRequest;
         public bool IsPullRequest => IsAppVeyor && _appVeyorProvider.Environment.PullRequest.IsPullRequest;
@@ -209,11 +210,23 @@ namespace Cake.Utility
                     continue;
                 var assemblyInfo = parser.Parse(file);
                 _log.Information("Creating " + file);
+
+                string rootVersion = versionInfo.RootVersion;
+                //on AppVeyor, if it is a PullRequest and "pull_requests: do_not_increment_build_number" is true, it will make up a build like 1.0.2-fisiek
+                //It does this because it requires unique version numbers.  
+                //So, what is in RootVersion has this 'prerelease' tag of 'fisiek' or whatever on it.  This is not valid when versioning assembiles!
+                //we of course are not going to publish prereleases to nuget, so just make up any version for this.
+
+                //if do_not_increment_build_number is false, then the version does NOT contain the extra tag and it does not matter.
+                //of course we do not know if this is true or false.  So we will just look...
+                if (IsPullRequest && rootVersion.Contains("-"))
+                    rootVersion = "1.0.1";
+
                 creator.Create(file, new AssemblyInfoSettings
                 {
                     Product = assemblyInfo.Product,
-                    Version = versionInfo.RootVersion,
-                    FileVersion = versionInfo.RootVersion,
+                    Version = rootVersion,
+                    FileVersion = rootVersion,
                     InformationalVersion = versionInfo.FullVersion,
                     Copyright = string.Format(copyrightText, DateTime.Now.Year)
                 });
