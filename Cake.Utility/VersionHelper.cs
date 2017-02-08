@@ -218,32 +218,8 @@ namespace Cake.Utility
             return result;
         }
 
-        private bool PatchSingleSolutionVersionFile(VersionResult versionInfo, string copyrightText)
-        {
-            var solutionVersion = _globber.GetFiles("./**/SolutionVersion.cs").ToList();
-            if (solutionVersion.Count == 1)
-            {
-                var file = solutionVersion[0];
-                var parser = new AssemblyInfoParser(_fileSystem, _environment);
-                var creator = new AssemblyInfoCreator(_fileSystem, _environment, _log);
-                _log.Information($"Patching single solution version file:{file}");
-                var assemblyInfo = parser.Parse(file);
-                creator.Create(file, new AssemblyInfoSettings
-                {
-                    Product = assemblyInfo.Product,
-                    Version = versionInfo.RootVersion,
-                    FileVersion = versionInfo.RootVersion,
-                    InformationalVersion = versionInfo.FullVersion,
-                    Copyright = string.Format(copyrightText, DateTime.Now.Year)
-                });
-                return true;
-            }
-            return false;
-        }
         public void PatchAllAssemblyInfo(VersionResult versionInfo, string copyrightText)
         {
-            if (PatchSingleSolutionVersionFile(versionInfo, copyrightText))
-                return;
             var parser = new AssemblyInfoParser(_fileSystem, _environment);
             var creator = new AssemblyInfoCreator(_fileSystem, _environment, _log);
             var assemblyFiles = _globber.GetFiles("./**/AssemblyInfo.cs");
