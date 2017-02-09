@@ -8,6 +8,7 @@ using Cake.Common.Tools.MSBuild;
 using Cake.Common.Tools.NuGet;
 using Cake.Common.Tools.NuGet.Pack;
 using Cake.Common.Tools.NUnit;
+using Cake.Common.Tools.OctopusDeploy;
 using Cake.Core;
 using Cake.Core.Diagnostics;
 using Cake.Core.IO;
@@ -95,11 +96,16 @@ namespace Cake.Utility
                 {
                     log.Verbosity = loggingEnum;
                     log.Information($"Logging Level: {loggingEnum}", Verbosity.Quiet);
+                    if (IsAppVeyor)
+                        _appVeyorProvider.AddInformationalMessage($"Logging set by LoggingLevel enviornment variable to {loggingEnum}");
                     _isDefaultLoggingLevel = false;
                 }
                 else
                 {
-                    log.Warning($"Invalid logging level [{envLogging}].  Use {Verbosity.Quiet}, {Verbosity.Minimal}, {Verbosity.Normal}, {Verbosity.Verbose} or {Verbosity.Diagnostic}");
+                    string msg = $"Invalid logging level [{envLogging}].  Use {Verbosity.Quiet}, {Verbosity.Minimal}, {Verbosity.Normal}, {Verbosity.Verbose} or {Verbosity.Diagnostic}";
+                    if (IsAppVeyor)
+                        log.Warning(msg);
+                    _appVeyorProvider.AddWarningMessage(msg);
                 }
 
             }
@@ -149,6 +155,7 @@ namespace Cake.Utility
         public bool ShouldUploadArtifacts => IsCiBuildEnvironment && !IsPullRequest;
         public bool IsPreRelease => string.Compare(Branch, DefaultBranchName, StringComparison.OrdinalIgnoreCase) != 0;
         public bool ShouldDeploy => IsCiBuildEnvironment && !IsPreRelease && !IsPullRequest;
+        public bool ShouldCreateOctopusRelease => IsCiBuildEnvironment && !IsPullRequest;
         public bool IsPullRequest => IsAppVeyor && _appVeyorProvider.Environment.PullRequest.IsPullRequest;
         public string BuildEnvironmentName => IsAppVeyor ? "AppVeyor" : "Interactive";
 
@@ -183,6 +190,66 @@ namespace Cake.Utility
                 _appVeyorProvider.UpdateBuildVersion(version.FullVersion);
                 _appVeyorProvider.AddInformationalMessage($"Building {version.FullVersion}");
             }
+        }
+
+        public void CreateOctopusRelease(string projectName, VersionResult version, string apiUrl, string apiKey)
+        {
+            _log.Information($"Creating octopus release {version.FullVersion}");
+            var settings = new CreateReleaseSettings
+            {
+                EnableDebugLogging = _log.Verbosity > Verbosity.Normal,
+                EnableServiceMessages = false, // Enables teamcity services messages when logging
+                ReleaseNumber = version.FullVersion,
+                DefaultPackageVersion = version.FullVersion, // All packages in the release should be x.x.x.x
+                // One or the other
+                ReleaseNotes = CommitMessageShort,
+                //ReleaseNotesFile = "./ReleaseNotes.md",
+                Server = apiUrl,
+                ApiKey = apiKey
+                //IgnoreExisting = true // if this release number already exists, ignore it
+                //ToolPath = "./tools/OctopusTools/Octo.exe"
+                //IgnoreSslErrors = true,
+                //Packages = new Dictionary<string, string>
+                //            {
+                //                { "PackageOne", "1.0.2.3" },
+                //                { "PackageTwo", "5.2.3" }
+                //            },
+                //PackagesFolder = @"C:\MyOtherNugetFeed",
+            };
+            var octoRelease = new OctopusDeployReleaseCreator(_fileSystem, _environment, _processRunner, _tools);
+            octoRelease.CreateRelease(projectName, settings);
+
+            if (IsAppVeyor)
+                _appVeyorProvider.AddInformationalMessage($"Octopus release {version.FullVersion} created.");
+        }
+
+        public void DeployOctopusRelease(string projectName, VersionResult version, string apiUrl, string apiKey)
+        {
+            string octopusEnvironmentForDeploy = "UAT";
+            _log.Information($"Deploying octopus release {version.FullVersion}");
+            var settings = new OctopusDeployReleaseDeploymentSettings
+            {
+                SpecificMachines = new[] { AutoDeployTarget },
+                EnableDebugLogging = _log.Verbosity > Verbosity.Normal,
+                //ShowProgress = true,
+                //ForcePackageDownload = true,
+                //WaitForDeployment = true,
+                //DeploymentTimeout = TimeSpan.FromMinutes(1),
+                //CancelOnTimeout = true,
+                //DeploymentChecksLeepCycle = TimeSpan.FromMinutes(77),
+                //GuidedFailure = true,
+                //Force = true,
+                //SkipSteps = new[] { "Step1", "Step2" },
+                //NoRawLog = true,
+                //RawLogFile = "someFile.txt",
+                //DeployAt = new DateTime(2010, 6, 15).AddMinutes(1),
+                //Tenant = new[] { "Tenant1", "Tenant2" },
+                //TenantTags = new[] { "Tag1", "Tag2" },
+            };
+            var octoDeploy = new OctopusDeployReleaseDeployer(_fileSystem, _environment, _processRunner, _tools);
+            octoDeploy.DeployRelease(apiUrl, apiKey, projectName, octopusEnvironmentForDeploy, version.FullVersion, settings);
+            if (IsAppVeyor)
+                _appVeyorProvider.AddInformationalMessage($"Deployed to {octopusEnvironmentForDeploy} -  {AutoDeployTarget}");
         }
 
         public VersionResult GetNextVersion(string defaultVersion)
@@ -297,12 +364,19 @@ namespace Cake.Utility
                     _appVeyorProvider.AddInformationalMessage("Tests Passed");
 
             }
+            catch
+            {
+                if (IsAppVeyor)
+                {
+                    _appVeyorProvider.AddErrorMessage("Tests Failed");
+                }
+                throw;
+            }
             finally
             {
                 if (IsAppVeyor)
                 {
                     _appVeyorProvider.UploadTestResults(testResultsFile, testType);
-                    _appVeyorProvider.AddErrorMessage("Tests Failed");
                 }
             }
         }
@@ -315,7 +389,7 @@ namespace Cake.Utility
             {
                 _log.Information($"Found artifact '{artifact.FullPath}' - Uploading");
                 _appVeyorProvider.UploadArtifact(artifact);
-                _appVeyorProvider.AddInformationalMessage($"Uploaded {artifact.FullPath}");
+                _appVeyorProvider.AddInformationalMessage($"Uploaded {artifact.GetFilename()}");
             }
         }
 
