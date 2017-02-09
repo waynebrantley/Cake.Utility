@@ -97,6 +97,10 @@ namespace Cake.Utility
                     log.Information($"Logging Level: {loggingEnum}", Verbosity.Quiet);
                     _isDefaultLoggingLevel = false;
                 }
+                else
+                {
+                    log.Warning($"Invalid logging level [{envLogging}].  Use {Verbosity.Quiet}, {Verbosity.Minimal}, {Verbosity.Normal}, {Verbosity.Verbose} or {Verbosity.Diagnostic}");
+                }
 
             }
             else
