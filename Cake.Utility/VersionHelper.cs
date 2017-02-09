@@ -179,7 +179,10 @@ namespace Cake.Utility
             if (IsInteractiveBuild)
                 _log.Information($"Interacitve Build Mode");
             else if (IsAppVeyor)
+            {
                 _appVeyorProvider.UpdateBuildVersion(version.FullVersion);
+                _appVeyorProvider.AddInformationalMessage($"Building {version.FullVersion}");
+            }
         }
 
         public VersionResult GetNextVersion(string defaultVersion)
@@ -290,11 +293,17 @@ namespace Cake.Utility
                     NUnit3Test(assemblies, testResultsFile, whereFilter);
                 else
                     NUnit2Test(assemblies, testResultsFile, whereFilter);
+                if (IsAppVeyor)
+                    _appVeyorProvider.AddInformationalMessage("Tests Passed");
+
             }
             finally
             {
                 if (IsAppVeyor)
+                {
                     _appVeyorProvider.UploadTestResults(testResultsFile, testType);
+                    _appVeyorProvider.AddErrorMessage("Tests Failed");
+                }
             }
         }
 
@@ -306,6 +315,7 @@ namespace Cake.Utility
             {
                 _log.Information($"Found artifact '{artifact.FullPath}' - Uploading");
                 _appVeyorProvider.UploadArtifact(artifact);
+                _appVeyorProvider.AddInformationalMessage($"Uploaded {artifact.FullPath}");
             }
         }
 
