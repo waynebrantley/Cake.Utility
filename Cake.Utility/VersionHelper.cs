@@ -60,6 +60,7 @@ namespace Cake.Utility
 
         public const string DefaultBuildVersionArgumentName = "buildVersion";
         public const string DefaultDefaultBranchName = "master";
+        public const string NoDeploymentTarget = "None";
 
         static VersionHelper()
         {
@@ -162,7 +163,7 @@ namespace Cake.Utility
         public bool AutoDeploy => IsCiBuildEnvironment && IsPreRelease && !IsPullRequest && CommitMessageMatches.Success;
         public string AutoDeployTarget => CommitMessageMatches.Success ? CommitMessageMatches.Groups["argument"].Value.ToLower() : string.Empty;
 
-        public NuGetVerbosity NuGetLoggingLevel => _isDefaultLoggingLevel || _log.Verbosity == Verbosity.Normal ? NuGetVerbosity.Normal : (_log.Verbosity < Verbosity.Normal ? NuGetVerbosity.Quiet : NuGetVerbosity.Detailed);
+        public NuGetVerbosity NuGetLoggingLevel => _isDefaultLoggingLevel || _log.Verbosity == Verbosity.Normal ? NuGetVerbosity.Quiet : (_log.Verbosity < Verbosity.Normal ? NuGetVerbosity.Quiet : NuGetVerbosity.Detailed);
         public Verbosity MsBuildLoggingLevel => _isDefaultLoggingLevel ? Verbosity.Minimal : _log.Verbosity;
 
         public MatchResult CommitMessageMatches { get; }
@@ -192,8 +193,46 @@ namespace Cake.Utility
             }
         }
 
+        public void CreateOctopusRelease(VersionResult version)
+        {
+            string octopusApiHttp = _environment.GetEnvironmentVariable("Octopus.ApiHttp");
+            string octopusApikey = _environment.GetEnvironmentVariable("Octopus.PublishApiKey");
+            string octopusProjectName = _environment.GetEnvironmentVariable("Octopus.ProjectName");
+            if (string.IsNullOrEmpty(octopusApiHttp))
+            {
+                _log.Error("Must define Octopus.ApiHttp environment variable to use OctopusDeploy functions");
+                return;
+            }
+            if (string.IsNullOrEmpty(octopusApikey))
+            {
+                _log.Error("Must define Octopus.PublishApiKey environment variable to use OctopusDeploy functions");
+                return;
+            }
+            if (string.IsNullOrEmpty(octopusProjectName))
+            {
+                _log.Error("Must define Octopus.ProjectName environment variable to use OctopusDeploy functions");
+                return;
+            }
+            CreateOctopusRelease(octopusProjectName, version, octopusApiHttp, octopusApikey);
+        }
+
         public void CreateOctopusRelease(string projectName, VersionResult version, string apiUrl, string apiKey)
         {
+            if (string.IsNullOrEmpty(apiUrl))
+            {
+                _log.Error("apiUrl canot be empty");
+                return;
+            }
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                _log.Error("apiKey canot be empty");
+                return;
+            }
+            if (string.IsNullOrEmpty(projectName))
+            {
+                _log.Error("Project name canot be empty");
+                return;
+            }
             _log.Information($"Creating octopus release {version.FullVersion}");
             var settings = new CreateReleaseSettings
             {
@@ -223,8 +262,46 @@ namespace Cake.Utility
                 _appVeyorProvider.AddInformationalMessage($"Octopus release {version.FullVersion} created.");
         }
 
+        public void DeployOctopusRelease(VersionResult version)
+        {
+            string octopusApiHttp = _environment.GetEnvironmentVariable("Octopus.ApiHttp");
+            string octopusApikey = _environment.GetEnvironmentVariable("Octopus.PublishApiKey");
+            string octopusProjectName = _environment.GetEnvironmentVariable("Octopus.ProjectName");
+            if (string.IsNullOrEmpty(octopusApiHttp))
+            {
+                _log.Error("Must define Octopus.ApiHttp environment variable to use OctopusDeploy functions");
+                return;
+            }
+            if (string.IsNullOrEmpty(octopusApikey))
+            {
+                _log.Error("Must define Octopus.PublishApiKey environment variable to use OctopusDeploy functions");
+                return;
+            }
+            if (string.IsNullOrEmpty(octopusProjectName))
+            {
+                _log.Error("Must define Octopus.ProjectName environment variable to use OctopusDeploy functions");
+                return;
+            }
+            DeployOctopusRelease(octopusProjectName, version, octopusApiHttp, octopusApikey);
+        }
         public void DeployOctopusRelease(string projectName, VersionResult version, string apiUrl, string apiKey)
         {
+            if (string.IsNullOrEmpty(apiUrl))
+            {
+                _log.Error("apiUrl canot be empty");
+                return;
+            }
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                _log.Error("apiKey canot be empty");
+                return;
+            }
+            if (string.IsNullOrEmpty(projectName))
+            {
+                _log.Error("Project name canot be empty");
+                return;
+            }
+
             string octopusEnvironmentForDeploy = "UAT";
             _log.Information($"Deploying octopus release {version.FullVersion}");
             var settings = new OctopusDeployReleaseDeploymentSettings

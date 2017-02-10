@@ -150,12 +150,6 @@ namespace Cake.Utility.Tests
             Assert.That(versionHelper.IsAppVeyor, Is.EqualTo(true));
             Assert.That(versionHelper.AutoDeploy, Is.EqualTo(true));
             Assert.That(versionHelper.AutoDeployTarget, Is.EqualTo(targetMachine));
-
-
-            foreach(string groupName in VersionHelper.CommitMessageRegex.GetGroupNames())
-            {
-                Console.WriteLine($"{groupName} : {versionHelper.CommitMessageMatches.Groups[groupName].Value}");
-            }
         }
 
         [TestCase(true)]

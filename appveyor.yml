@@ -10,8 +10,8 @@ before_build:
 build:
   publish_nuget: true
   verbosity: minimal
-before_package:
-- cmd: nuget restore
+cache:
+  - packages
 notifications:
 - provider: Slack
   incoming_webhook: 
