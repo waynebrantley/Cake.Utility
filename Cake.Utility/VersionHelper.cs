@@ -23,6 +23,7 @@ namespace Cake.Utility
         public bool OctoPackToArtifacts { get; set; }
         public bool PublishOnBuild { get; set; }
         public string PublishProfile { get; set; }
+        public string VersionOverride { get; set; }
     }
 
     public class VersionResult
@@ -522,6 +523,8 @@ namespace Cake.Utility
             {
                 msBuildSettings.Properties.Add("RunOctoPack", new List<string> { "true" });
                 msBuildSettings.Properties.Add("OctoPackPublishPackageToFileShare", new List<string> { artifactPath });
+                if (!string.IsNullOrWhiteSpace(settings.VersionOverride))
+                    msBuildSettings.Properties.Add("OctoPackPackageVersion", new List<string> { settings.VersionOverride });
                 //msBuildSettings.Properties.Add("OctoPackEnforceAddingFiles", new List<string> { "true" });
             }
 
