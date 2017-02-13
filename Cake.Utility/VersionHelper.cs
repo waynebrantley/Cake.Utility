@@ -360,7 +360,6 @@ namespace Cake.Utility
                 if (file.ToString().Contains("packages/"))
                     continue;
                 var assemblyInfo = parser.Parse(file);
-                _log.Information("Creating " + file);
 
                 string rootVersion = versionInfo.RootVersion;
                 //on AppVeyor, if it is a PullRequest and "pull_requests: do_not_increment_build_number" is true, it will make up a build like 1.0.2-fisiek
@@ -372,6 +371,8 @@ namespace Cake.Utility
                 //of course we do not know if this is true or false.  So we will just look...
                 if (IsPullRequest && rootVersion.Contains("-"))
                     rootVersion = "1.0.1";
+
+                _log.Information($"Creating File Version:{rootVersion} Info Version:{versionInfo.FullVersion} for {file} ");
 
                 creator.Create(file, new AssemblyInfoSettings
                 {
