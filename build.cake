@@ -1,4 +1,5 @@
-#addin nuget:?package=Cake.Utility
+#addin nuget:https://ci.appveyor.com/nuget/cake-utility-4ufl9hamniq3/?package=Cake.Utility 
+//#addin nuget:?package=Cake.Utility
 
 var buildHelper = GetVersionHelper();
 var verInfo = buildHelper.GetNextVersion("1.0.0");
