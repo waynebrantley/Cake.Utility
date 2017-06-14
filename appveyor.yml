@@ -12,11 +12,3 @@ build:
   verbosity: minimal
 cache:
   - packages
-notifications:
-- provider: Slack
-  incoming_webhook: 
-    secure: jAHwieC/ls9GRYV3YawixFkHoUekBo17Sq63Ik5AYYKHbm+GZwLKJy9ni7gsxwXVwA+79fbacsARTacf1bvYSJFALusnWuqqBa208OqYvFc=
-  channel: builds
-  on_build_success: true
-  on_build_failure: true
-  on_build_status_changed: false

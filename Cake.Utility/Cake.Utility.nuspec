@@ -8,6 +8,7 @@
     <owners>WayneBrantley</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Common cake routines used across projects</description>
+    <projectUrl>https://github.com/waynebrantley/Cake.Utility</projectUrl>
   </metadata>
   <files>
       <file src="bin\release\Cake.Utility.dll" />
