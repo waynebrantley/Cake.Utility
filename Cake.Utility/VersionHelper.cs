@@ -406,9 +406,9 @@ namespace Cake.Utility
             {
                 NoHeader = true,
                 NoResults = IsInteractiveBuild,
-                Verbose = _log.Verbosity > Verbosity.Normal,
+                //Verbose = _log.Verbosity > Verbosity.Normal,
                 OutputFile = outputFile,
-                ResultFormat = "AppVeyor",
+                Results = new List<NUnit3Result> { new NUnit3Result { Format = "AppVeyor"} },  //FileName = "testResult.xml", 
                 Where = whereFilter
             };
             var runner = new NUnit3Runner(_fileSystem, _environment, _processRunner, _tools);
