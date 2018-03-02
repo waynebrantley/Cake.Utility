@@ -4,7 +4,7 @@ init:
 - cmd: >-
     tzutil /s "Eastern Standard Time"
 
-    choco install cake.portable -r -y
+    choco install cake.portable --version 0.25.0 -r -y
 before_build:
 - cmd: cake
 build:
