@@ -14,7 +14,7 @@ namespace Cake.Utility
                 throw new ArgumentNullException(nameof(context));
 
             return new VersionHelper(context.Environment, context.Log, context.Arguments, 
-                                     context.AppVeyor(), context.Globber, context.FileSystem, context.ProcessRunner, context.Tools);
+                                     context.AppVeyor(), context.TFBuild(), context.Globber, context.FileSystem, context.ProcessRunner, context.Tools);
         }
 
         [CakeMethodAlias]
@@ -23,7 +23,7 @@ namespace Cake.Utility
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
             var versionInfo = new VersionHelper(context.Environment, context.Log, context.Arguments, 
-                                                context.AppVeyor(), context.Globber, context.FileSystem, context.ProcessRunner, context.Tools)
+                                                context.AppVeyor(), context.TFBuild(), context.Globber, context.FileSystem, context.ProcessRunner, context.Tools)
             {
                 Branch = branch
             };
