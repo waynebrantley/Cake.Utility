@@ -5,6 +5,7 @@ init:
     tzutil /s "Eastern Standard Time"
 
     choco install cake.portable -r -y
+shallow_clone: true
 before_build:
 - cmd: cake
 build:
