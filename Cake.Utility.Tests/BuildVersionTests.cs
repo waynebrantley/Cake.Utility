@@ -2,6 +2,7 @@
 using System.Text.RegularExpressions;
 using Cake.Common.Build.AppVeyor;
 using Cake.Common.Build.AppVeyor.Data;
+using Cake.Common.Build.TFBuild;
 using Cake.Core;
 using Cake.Core.IO;
 using Cake.Core.Tooling;
@@ -23,6 +24,7 @@ namespace Cake.Utility.Tests
         private FakeFileSystem _fileSystem;
         private IProcessRunner _processRunner;
         private IToolLocator _toolLocator;
+        private ITFBuildProvider _azure;
         private const string FallBackVersion = "1.1.1";
         [SetUp]
         public void Setup()
@@ -31,6 +33,7 @@ namespace Cake.Utility.Tests
             _log = new FakeLog();
             _arguments = Substitute.For<ICakeArguments>();
             _appVeyor = Substitute.For<IAppVeyorProvider>();
+            _azure = Substitute.For<ITFBuildProvider>();
             _appEnvironment = new AppVeyorEnvironmentInfo(_environment);
             _appVeyor.Environment.Returns(_appEnvironment);
             _globber = Substitute.For<IGlobber>();
@@ -177,7 +180,7 @@ namespace Cake.Utility.Tests
 
         private VersionHelper GetVersionHelper(string branch)
         {
-            return new VersionHelper(_environment, _log, _arguments,  _appVeyor, _globber, _fileSystem, _processRunner, _toolLocator) { Branch = branch };
+            return new VersionHelper(_environment, _log, _arguments,  _appVeyor, _azure, _globber, _fileSystem, _processRunner, _toolLocator) { Branch = branch };
         }
     }
 }

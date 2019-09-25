@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Cake.Common.Build.AppVeyor;
+using Cake.Common.Build.TFBuild;
 using Cake.Common.Solution.Project.Properties;
 using Cake.Common.Tools.MSBuild;
 using Cake.Common.Tools.NuGet;
@@ -52,6 +53,7 @@ namespace Cake.Utility
         private readonly ICakeLog _log;
         private readonly ICakeArguments _arguments;
         private readonly IAppVeyorProvider _appVeyorProvider;
+        private readonly ITFBuildProvider _azureProvider;
         private readonly IGlobber _globber;
         private readonly IFileSystem _fileSystem;
         private readonly IProcessRunner _processRunner;
@@ -71,12 +73,13 @@ namespace Cake.Utility
             CommitMessageRegex = new Regex($@"\[(?<command>(?i){string.Join("|", commands)}) +(?<argument>[\w\.]+)\]+", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
         }
         public VersionHelper(ICakeEnvironment environment, ICakeLog log, ICakeArguments arguments,
-                             IAppVeyorProvider appVeyorProvider, IGlobber globber, IFileSystem fileSystem, IProcessRunner processRunner, IToolLocator tools)
+                             IAppVeyorProvider appVeyorProvider, ITFBuildProvider azureProvider, IGlobber globber, IFileSystem fileSystem, IProcessRunner processRunner, IToolLocator tools)
         {
             _environment = environment;
             _log = log;
             _arguments = arguments;
             _appVeyorProvider = appVeyorProvider;
+            _azureProvider = azureProvider;
             _globber = globber;
             _fileSystem = fileSystem;
             _processRunner = processRunner;
@@ -143,6 +146,25 @@ namespace Cake.Utility
                     }
                 }
             }
+            if (IsAzureDevops)
+            {
+                Branch = _azureProvider.Environment.Repository.Branch;
+                //CommitMessageShort = _azureProvider.Environment.Repository.Commit.Message;
+                //var match = CommitMessageRegex.Match(_azureProvider.Environment.Repository.Commit.ExtendedMessage);
+                //CommitMessageMatches = new MatchResult { Success = match.Success, Groups = match.Groups };
+                //_log.Debug($"Branch:{Branch}");
+                //_log.Debug($"Commit Msg Short:{CommitMessageShort}");
+                //_log.Debug($"Commit Msg Extended:{_appVeyorProvider.Environment.Repository.Commit.ExtendedMessage}");
+                //_log.Debug($"Commit Message Cmd Match:{CommitMessageMatches.Success}");
+                //if (_log.Verbosity >= Verbosity.Verbose && CommitMessageMatches.Success)
+                //{
+                //    _log.Debug("RegEx Group Matches");
+                //    foreach (string groupName in CommitMessageRegex.GetGroupNames())
+                //    {
+                //        _log.Debug($"{groupName} : {CommitMessageMatches.Groups[groupName].Value}");
+                //    }
+                //}
+            }
         }
 
         public string BuildVersionArgumentName { get; set; } = DefaultBuildVersionArgumentName;
@@ -152,14 +174,15 @@ namespace Cake.Utility
         public string Configuration { get; set; }
         public string CommitMessageShort { get; set; }
         public bool IsAppVeyor => _appVeyorProvider.IsRunningOnAppVeyor;
-        public bool IsInteractiveBuild => !IsAppVeyor;
-        public bool IsCiBuildEnvironment => IsAppVeyor;
+        public bool IsAzureDevops => _azureProvider.IsRunningOnAzurePipelines || _azureProvider.IsRunningOnAzurePipelinesHosted;
+        public bool IsInteractiveBuild => !IsAppVeyor && !IsAzureDevops;
+        public bool IsCiBuildEnvironment => IsAppVeyor || IsAzureDevops;
         public bool ShouldUploadArtifacts => IsCiBuildEnvironment && !IsPullRequest;
         public bool IsPreRelease => string.Compare(Branch, DefaultBranchName, StringComparison.OrdinalIgnoreCase) != 0;
         public bool ShouldDeploy => IsCiBuildEnvironment && !IsPreRelease && !IsPullRequest;
         public bool ShouldCreateOctopusRelease => IsCiBuildEnvironment && !IsPullRequest;
         public bool IsPullRequest => IsAppVeyor && _appVeyorProvider.Environment.PullRequest.IsPullRequest;
-        public string BuildEnvironmentName => IsAppVeyor ? "AppVeyor" : "Interactive";
+        public string BuildEnvironmentName => IsAppVeyor ? "AppVeyor" : (IsAzureDevops ? "AzureDevops" : "Interactive");
 
         public bool AutoDeploy => IsCiBuildEnvironment && IsPreRelease && !IsPullRequest && CommitMessageMatches.Success;
         public string AutoDeployTarget => CommitMessageMatches.Success ? CommitMessageMatches.Groups["argument"].Value.ToLower() : string.Empty;
